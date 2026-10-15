@@ -4,14 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>星艦檔案：未知的終局 | 搜查終端</title>
-  <!-- Tailwind CSS CDN -->
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- Chart.js for Admin Station -->
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Google Fonts: Orbitron & Noto Sans TC -->
+  <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+  
+  <!-- Firebase SDK (跨電腦即時資料庫同步) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 
   <style>
     body {
@@ -24,19 +28,12 @@
         linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
       background-size: 100% 100%, 30px 30px, 30px 30px;
     }
-
     .font-orbitron { font-family: 'Orbitron', sans-serif; }
-
-    /* Cyber Glassmorphism */
     .cyber-card {
-      background: rgba(10, 20, 38, 0.75);
+      background: rgba(10, 20, 38, 0.85);
       backdrop-filter: blur(12px);
       border: 1px solid rgba(0, 240, 255, 0.2);
-      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), inset 0 0 15px rgba(0, 240, 255, 0.05);
-    }
-
-    .cyber-border-glow {
-      position: relative;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
     }
     .cyber-border-glow::after {
       content: '';
@@ -47,34 +44,22 @@
       box-shadow: 0 0 12px rgba(0, 240, 255, 0.3);
       pointer-events: none;
     }
-
-    /* Scanline effect */
     .scanlines {
       position: fixed;
       top: 0; left: 0; width: 100%; height: 100%;
       pointer-events: none;
-      background: linear-gradient(
-        rgba(18, 16, 16, 0) 50%, 
-        rgba(0, 0, 0, 0.25) 50%
-      );
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
       background-size: 100% 4px;
       z-index: 50;
       opacity: 0.6;
     }
-
-    /* Custom Checkbox Cards */
-    .suspect-card {
-      transition: all 0.2s ease-in-out;
-      cursor: pointer;
-    }
+    .suspect-card { transition: all 0.2s ease-in-out; cursor: pointer; }
     .suspect-card.selected {
       border-color: #00f0ff;
-      background: rgba(0, 240, 255, 0.15);
+      background: rgba(0, 240, 255, 0.2);
       box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
       transform: translateY(-2px);
     }
-
-    /* Custom Scrollbar */
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: #050b14; }
     ::-webkit-scrollbar-thumb { background: #00f0ff; border-radius: 3px; }
@@ -83,14 +68,13 @@
 <body class="min-h-screen relative overflow-x-hidden">
   <div class="scanlines"></div>
 
-  <!-- Top Navigation & Sound Bar -->
+  <!-- 頂部導覽列 -->
   <header class="border-b border-cyan-900/50 bg-slate-950/80 backdrop-filter blur-md px-6 py-3 flex justify-between items-center relative z-40">
     <div class="flex items-center space-x-3">
       <i class="fa-solid fa-ship text-cyan-400 text-xl animate-pulse"></i>
       <span class="font-orbitron font-bold text-lg tracking-wider text-cyan-300">USSC VANGUARD // TERMINAL OS</span>
     </div>
     
-    <!-- Quick Station Switcher (For Debug & Setup) -->
     <div class="flex items-center space-x-2 text-xs">
       <span class="text-slate-400 hidden sm:inline">目前站點:</span>
       <select id="stationSelect" onchange="switchStation(this.value)" class="bg-slate-900 border border-cyan-800 text-cyan-300 rounded px-2 py-1 text-xs focus:outline-none">
@@ -104,291 +88,245 @@
         <option value="8">站點 8 (艦長主控台 - 統整頁面)</option>
       </select>
       
-      <button onclick="toggleAudio()" id="audioBtn" class="bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-cyan-700/50 px-3 py-1 rounded flex items-center space-x-1">
+      <button onclick="toggleAudio()" id="audioBtn" class="bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-cyan-700/50 px-3 py-1 rounded">
         <i class="fa-solid fa-volume-high" id="audioIcon"></i>
-        <span class="hidden sm:inline">音效</span>
       </button>
     </div>
   </header>
 
-  <!-- Main Container -->
+  <!-- 主要內容區 -->
   <main class="container mx-auto px-4 py-8 relative z-30 max-w-5xl">
 
-    <!-- ================= 1. 金鑰鎖定層 (GATEKEEPER MODAL) ================= -->
+    <!-- ================= 1. 金鑰輸入解鎖彈窗 ================= -->
     <div id="keyAuthModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-lg flex items-center justify-center z-50 p-4">
-      <div class="cyber-card cyber-border-glow p-8 rounded-xl max-w-md w-full text-center space-y-6">
+      <div class="cyber-card cyber-border-glow p-8 rounded-xl max-w-md w-full text-center space-y-6 relative">
         <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-cyan-950 border border-cyan-500 text-cyan-400 text-2xl mb-2">
           <i class="fa-solid fa-shield-halved animate-bounce"></i>
         </div>
         <div>
-          <h2 class="font-orbitron text-2xl font-bold text-cyan-300 tracking-wide">SECURITY CHECK</h2>
-          <p class="text-xs text-slate-400 mt-1">請輸入專屬金鑰解鎖調查記錄檔</p>
+          <h2 class="font-orbitron text-2xl font-bold text-cyan-300 tracking-wide">SECURITY GATEWAY</h2>
+          <p class="text-xs text-slate-400 mt-1">請輸入尚未使用的專屬金鑰以解鎖此終端</p>
         </div>
 
         <div class="space-y-4">
-          <div class="relative">
-            <input type="text" id="accessKeyInput" placeholder="請輸入安全金鑰 (例: KEY-NEBULA-01)" 
-              class="w-full bg-slate-900/90 border border-cyan-500/50 rounded-lg px-4 py-3 text-center text-cyan-200 font-mono tracking-widest uppercase focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/30 transition">
-          </div>
-          <button onclick="verifyAccessKey()" class="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold py-3 px-6 rounded-lg font-orbitron tracking-wider transition duration-200 shadow-lg shadow-cyan-500/20">
-            解鎖系統 <i class="fa-solid fa-key ml-2"></i>
+          <input type="text" id="accessKeyInput" placeholder="請輸入金鑰 (例: KEY-01)" 
+            class="w-full bg-slate-900/90 border border-cyan-500/50 rounded-lg px-4 py-3 text-center text-cyan-200 font-mono tracking-widest uppercase focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/30 transition">
+          
+          <button onclick="verifyAccessKey()" class="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold py-3 px-6 rounded-lg font-orbitron tracking-wider shadow-lg shadow-cyan-500/20 transition">
+            驗證並解鎖 <i class="fa-solid fa-key ml-2"></i>
           </button>
         </div>
 
-        <div id="authStatusMsg" class="text-xs hidden p-2 rounded"></div>
+        <div id="authStatusMsg" class="text-xs hidden p-2.5 rounded border font-mono"></div>
 
         <div class="border-t border-slate-800 pt-4 text-left">
-          <p class="text-[10px] text-slate-500 font-mono">預設可用測試金鑰 (選一填寫)：</p>
-          <div class="flex flex-wrap gap-1 mt-1 text-[10px] font-mono text-cyan-400">
-            <span class="bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded">KEY-NEBULA-01</span>
-            <span class="bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded">KEY-PULSE-02</span>
-            <span class="bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded">KEY-QUANTUM-03</span>
-            <span class="bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded">KEY-CYBER-04</span>
+          <p class="text-[10px] text-slate-500 font-mono">預設可測試金鑰 (填寫送出後即作廢)：</p>
+          <div class="flex flex-wrap gap-1 mt-1 text-[10px] font-mono text-cyan-400" id="availableKeysBadge">
+            <span class="bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded">KEY-01</span>
+            <span class="bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded">KEY-02</span>
+            <span class="bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded">KEY-03</span>
+            <span class="bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded">KEY-04</span>
+            <span class="bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded">KEY-05</span>
+            <span class="bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded">KEY-06</span>
+            <span class="bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded">KEY-07</span>
           </div>
         </div>
       </div>
     </div>
 
 
-    <!-- ================= 2. 一般調查表單 (STATION 1 ~ 7) ================= -->
+    <!-- ================= 2. 7大站點調查表單 (STATION 1 ~ 7) ================= -->
     <div id="stationFormView" class="hidden space-y-8">
       
-      <!-- 艙區頂部介紹簡報 -->
-      <div class="cyber-card p-6 rounded-xl border-l-4 border-l-cyan-400 relative overflow-hidden">
+      <!-- 標題與簡介 -->
+      <div class="cyber-card p-6 rounded-xl border-l-4 border-l-cyan-400 relative">
         <div class="flex justify-between items-start">
           <div>
             <div class="flex items-center space-x-2">
               <span id="stationBadge" class="bg-cyan-950 text-cyan-400 border border-cyan-800 text-xs px-2.5 py-0.5 rounded font-mono">STATION-01</span>
-              <span class="text-xs text-slate-400 font-mono">STATUS: INVESTIGATION IN PROGRESS</span>
+              <span class="text-xs text-slate-400 font-mono">SYSTEM UNLOCKED</span>
             </div>
-            <h1 id="stationTitle" class="text-2xl sm:text-3xl font-bold text-cyan-100 mt-2 font-orbitron">站點 1：艦橋區專案記錄</h1>
+            <h1 id="stationTitle" class="text-2xl sm:text-3xl font-bold text-cyan-100 mt-2 font-orbitron">站點 1：艦橋區域記錄</h1>
           </div>
           <div class="text-right font-mono text-xs text-slate-400">
-            <div>解鎖金鑰: <span id="activeKeyDisplay" class="text-cyan-400 font-bold">---</span></div>
+            <div>使用金鑰: <span id="activeKeyDisplay" class="text-cyan-400 font-bold">---</span></div>
           </div>
         </div>
         <p id="stationIntro" class="mt-4 text-sm text-slate-300 leading-relaxed border-t border-slate-800/80 pt-3">
-          【艦區通告】此處為預設艙區介紹文字。您可以針對不同站點修改故事簡報內容。請調查隊員仔細核對現有證據，並完成最終推理匯報。
+          【艙區簡報】請調查隊員仔細審閱本區採集的物證與通訊紀錄，並填寫下方推理報告。
         </p>
       </div>
 
       <!-- 表單本體 -->
       <form id="investigationForm" onsubmit="submitForm(event)" class="space-y-8">
         
-        <!-- 問題一：兇手是誰 (29個複選選項) -->
+        <!-- Q1: 兇手是誰 (29個選項複選) -->
         <div class="cyber-card p-6 rounded-xl space-y-4">
           <div class="flex justify-between items-center border-b border-cyan-900/40 pb-3">
             <h2 class="text-lg font-bold text-cyan-300 flex items-center">
               <span class="bg-cyan-900/60 text-cyan-300 text-xs w-6 h-6 rounded-full flex items-center justify-center mr-2 font-mono">Q1</span>
-              請選擇您推測的兇手或同謀 (可複選)
+              第一題：兇手是誰？(可複選 29 位嫌疑人)
             </h2>
             <span class="text-xs text-cyan-400 font-mono">已選擇: <span id="selectedCount" class="font-bold text-cyan-300">0</span> / 29</span>
           </div>
 
-          <!-- 29 個嫌疑人選擇網格 -->
           <div id="suspectsGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 pt-2">
-            <!-- 程式碼會由 JavaScript 動態生成 29 個選項 -->
+            <!-- 由 JS 動態繪製 29 個卡片 -->
           </div>
         </div>
 
-        <!-- 問題二：作案動機 -->
+        <!-- Q2: 作案動機 -->
         <div class="cyber-card p-6 rounded-xl space-y-3">
           <h2 class="text-lg font-bold text-cyan-300 flex items-center">
             <span class="bg-cyan-900/60 text-cyan-300 text-xs w-6 h-6 rounded-full flex items-center justify-center mr-2 font-mono">Q2</span>
-            推測的作案動機為何？
+            第二題：作案動機為何？
           </h2>
-          <textarea id="qMotive" rows="3" required placeholder="請詳細說明涉案人員的行為動機、心理狀態或利益衝突..." 
-            class="w-full bg-slate-900/80 border border-cyan-900/60 rounded-lg p-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition"></textarea>
+          <textarea id="qMotive" rows="3" required placeholder="請詳細說明涉案人員的行為動機與衝突點..." 
+            class="w-full bg-slate-900/80 border border-cyan-900/60 rounded-lg p-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-400 transition"></textarea>
         </div>
 
-        <!-- 問題三：系統異常的原因 -->
+        <!-- Q3: 系統異常的原因 -->
         <div class="cyber-card p-6 rounded-xl space-y-3">
           <h2 class="text-lg font-bold text-cyan-300 flex items-center">
             <span class="bg-cyan-900/60 text-cyan-300 text-xs w-6 h-6 rounded-full flex items-center justify-center mr-2 font-mono">Q3</span>
-            船艦系統發生異常的根本原因？
+            第三題：請說明系統異常的原因？
           </h2>
-          <textarea id="qAnomaly" rows="3" required placeholder="例如：AI過載、外部駭客入侵、實體線路破壞、異形干擾..." 
-            class="w-full bg-slate-900/80 border border-cyan-900/60 rounded-lg p-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition"></textarea>
+          <textarea id="qAnomaly" rows="3" required placeholder="請分析造成船艦系統過載或異常的根本原因..." 
+            class="w-full bg-slate-900/80 border border-cyan-900/60 rounded-lg p-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-400 transition"></textarea>
         </div>
 
-        <!-- 問題四：核銷代碼 -->
+        <!-- Q4: 核銷代碼 -->
         <div class="cyber-card p-6 rounded-xl space-y-3">
           <h2 class="text-lg font-bold text-cyan-300 flex items-center">
             <span class="bg-cyan-900/60 text-cyan-300 text-xs w-6 h-6 rounded-full flex items-center justify-center mr-2 font-mono">Q4</span>
-            請輸入您蒐集到的所有核銷代碼
+            第四題：請輸入你蒐集到的所有核銷代碼
           </h2>
-          <input type="text" id="qRedemptionCodes" required placeholder="例: CODE-A77, CODE-B99, CODE-X12" 
-            class="w-full bg-slate-900/80 border border-cyan-900/60 rounded-lg p-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition font-mono">
+          <input type="text" id="qRedemptionCodes" required placeholder="例如: CODE-A10, CODE-B22" 
+            class="w-full bg-slate-900/80 border border-cyan-900/60 rounded-lg p-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-400 transition font-mono">
         </div>
 
         <!-- 送出按鈕 -->
         <div class="text-center pt-4">
-          <button type="submit" class="bg-gradient-to-r from-cyan-500 to-emerald-600 hover:from-cyan-400 hover:to-emerald-500 text-slate-950 font-bold text-lg py-4 px-12 rounded-xl shadow-lg shadow-cyan-500/20 tracking-wider font-orbitron transition duration-200 transform hover:scale-105">
-            傳輸調查報告 <i class="fa-solid fa-paper-plane ml-2"></i>
+          <button type="submit" id="submitBtn" class="bg-gradient-to-r from-cyan-500 to-emerald-600 hover:from-cyan-400 hover:to-emerald-500 text-slate-950 font-bold text-lg py-4 px-12 rounded-xl shadow-lg shadow-cyan-500/20 tracking-wider font-orbitron transition duration-200 transform hover:scale-105">
+            傳輸報告（並核銷金鑰） <i class="fa-solid fa-paper-plane ml-2"></i>
           </button>
         </div>
       </form>
     </div>
 
 
-    <!-- ================= 3. 中央統整主控台 (STATION 8 / ADMIN) ================= -->
+    <!-- ================= 3. 站點 8 統整主控台 (STATION 8) ================= -->
     <div id="adminDashboardView" class="hidden space-y-8">
-      
-      <!-- 主控台標題區 -->
       <div class="cyber-card p-6 rounded-xl border-l-4 border-l-amber-500 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <div class="flex items-center space-x-2">
             <span class="bg-amber-950 text-amber-400 border border-amber-800 text-xs px-2.5 py-0.5 rounded font-mono">STATION-08</span>
-            <span class="text-xs text-slate-400 font-mono">CENTRAL COMMAND DASHBOARD</span>
+            <span class="text-xs text-slate-400 font-mono">CENTRAL COMMAND</span>
           </div>
-          <h1 class="text-2xl sm:text-3xl font-bold text-amber-200 mt-1 font-orbitron">艦隊中央決策統整主控台</h1>
+          <h1 class="text-2xl sm:text-3xl font-bold text-amber-200 mt-1 font-orbitron">全船總部推理統計與匯整</h1>
         </div>
 
         <div class="flex flex-wrap gap-2">
-          <button onclick="exportData('json')" class="bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-700/50 text-xs px-3 py-2 rounded">
-            <i class="fa-solid fa-download mr-1"></i> 匯出 JSON
-          </button>
-          <button onclick="exportData('csv')" class="bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-700/50 text-xs px-3 py-2 rounded">
-            <i class="fa-solid fa-file-csv mr-1"></i> 匯出 CSV
-          </button>
-          <button onclick="resetGameData()" class="bg-red-950/80 hover:bg-red-900 text-red-300 border border-red-700/50 text-xs px-3 py-2 rounded">
-            <i class="fa-solid fa-rotate-right mr-1"></i> 重置所有紀錄
+          <button onclick="resetAllGameData()" class="bg-red-950/80 hover:bg-red-900 text-red-300 border border-red-700/50 text-xs px-3 py-2 rounded font-mono">
+            <i class="fa-solid fa-rotate-right mr-1"></i> 清空所有回答與重置金鑰
           </button>
         </div>
       </div>
 
-      <!-- 統計圖表與摘要 -->
+      <!-- 圖表與統計 -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="cyber-card p-5 rounded-xl lg:col-span-2 space-y-4">
           <h3 class="font-bold text-cyan-300 text-sm font-orbitron flex items-center">
-            <i class="fa-solid fa-chart-column mr-2 text-cyan-400"></i> 兇手指控票數統計 (Top Suspects)
+            <i class="fa-solid fa-chart-column mr-2 text-cyan-400"></i> 29位嫌疑人得票數統計 (Realtime Tally)
           </h3>
           <div class="h-64">
             <canvas id="suspectsChart"></canvas>
           </div>
         </div>
 
-        <!-- 站點繳交狀態 -->
         <div class="cyber-card p-5 rounded-xl space-y-4">
           <h3 class="font-bold text-cyan-300 text-sm font-orbitron flex items-center">
-            <i class="fa-solid fa-server mr-2 text-cyan-400"></i> 7 大分區報告傳輸狀態
+            <i class="fa-solid fa-key mr-2 text-cyan-400"></i> 已使用/核銷之金鑰清單
           </h3>
-          <div id="stationStatusList" class="space-y-2 text-xs">
-            <!-- JavaScript 動態填入 1~7 站點狀態 -->
+          <div id="usedKeysList" class="space-y-2 text-xs font-mono max-h-60 overflow-y-auto">
+            <!-- 動態顯示哪些金鑰已被用掉 -->
           </div>
         </div>
       </div>
 
-      <!-- 各分組報告明細清單 -->
+      <!-- 詳細回答清單 -->
       <div class="space-y-4">
         <h2 class="text-xl font-bold text-cyan-200 font-orbitron flex items-center">
-          <i class="fa-solid fa-folder-open mr-2 text-cyan-400"></i> 各搜查終端傳回報告 (Station Reports)
+          <i class="fa-solid fa-inbox mr-2 text-cyan-400"></i> 各隊伍提交報告列表
         </h2>
-
-        <div id="reportsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <!-- 動態渲染 7 個站點傳回的表單答案 -->
+        <div id="reportsList" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- 動態渲染各隊伍提交的回答 -->
         </div>
       </div>
-
     </div>
 
   </main>
 
-  <!-- JavaScript 邏輯程式碼 -->
   <script>
-    // ================= 1. 基礎資料結構設定 =================
+    // ================= 1. 初始化資料庫與全域設定 =================
+    // 預設合法金鑰庫
+    const VALID_KEYS = ["KEY-01", "KEY-02", "KEY-03", "KEY-04", "KEY-05", "KEY-06", "KEY-07", "KEY-08", "KEY-09", "KEY-10"];
+
+    // 生成 29 位嫌疑人資料
     const SUSPECTS = Array.from({ length: 29 }, (_, i) => ({
       id: `S${String(i + 1).padStart(2, '0')}`,
-      name: `嫌疑人 ${String(i + 1).padStart(2, '0')} 號`,
-      role: `職位/身份代號 #${100 + i + 1}`
+      name: `嫌疑人 ${String(i + 1).padStart(2, '0')} 號`
     }));
-
-    const STATION_TITLES = {
-      1: "站點 1：艦橋區域 (Bridge Deck)",
-      2: "站點 2：科學研究實驗室 (Science Lab)",
-      3: "站點 3：工程與動力核心區 (Engineering)",
-      4: "站點 4：醫療中心 (Medical Bay)",
-      5: "站點 5：軍備與武器庫 (Armory)",
-      6: "站點 6：中央儲藏貨艙 (Cargo Hold)",
-      7: "站點 7：船員生活區 (Living Quarters)",
-      8: "站點 8：艦隊中央統整主控台 (Central Command)"
-    };
-
-    // 預設預設金鑰清單
-    const DEFAULT_KEYS = [
-      "KEY-NEBULA-01", "KEY-PULSE-02", "KEY-QUANTUM-03", 
-      "KEY-CYBER-04", "KEY-TITAN-05", "KEY-VORTEX-06", "KEY-ORION-07"
-    ];
 
     let currentStation = 1;
     let currentKey = "";
     let selectedSuspects = new Set();
-    let audioMuted = false;
     let chartInstance = null;
+    let audioMuted = false;
 
-    // 本地模擬資料庫 (若接入真實 Firebase，寫入與讀取將透過 Firebase API)
-    let appState = {
-      usedKeys: JSON.parse(localStorage.getItem('sf_used_keys') || '{}'),
-      responses: JSON.parse(localStorage.getItem('sf_responses') || '{}')
-    };
+    // 本地預設儲存狀態 (若未連接 Firebase 時使用)
+    let localUsedKeys = JSON.parse(localStorage.getItem('sf_used_keys') || '{}');
+    let localResponses = JSON.parse(localStorage.getItem('sf_responses') || '[]');
 
-    // ================= 2. 初始化與路由 =================
+    // ================= 2. 頁面初始化 =================
     window.addEventListener('DOMContentLoaded', () => {
-      // 讀取 URL 參數 ?station=X
       const urlParams = new URLSearchParams(window.location.search);
       const st = parseInt(urlParams.get('station'));
-      if (st >= 1 && st <= 8) {
-        currentStation = st;
-      }
+      if (st >= 1 && st <= 8) currentStation = st;
+      
       document.getElementById('stationSelect').value = currentStation;
-
       renderSuspectsGrid();
-      initView();
-    });
 
-    function switchStation(st) {
-      playBeep(600, 0.05);
-      window.location.search = `?station=${st}`;
-    }
-
-    function initView() {
       if (currentStation === 8) {
-        // 站點 8 為艦長主控台，不需輸入一般金鑰
         document.getElementById('keyAuthModal').classList.add('hidden');
-        document.getElementById('stationFormView').classList.add('hidden');
         document.getElementById('adminDashboardView').classList.remove('hidden');
         renderAdminDashboard();
       } else {
-        // 站點 1~7：先檢查是否已授權
-        document.getElementById('stationTitle').innerText = STATION_TITLES[currentStation];
+        document.getElementById('stationTitle').innerText = `站點 ${currentStation} 調查報告表單`;
         document.getElementById('stationBadge').innerText = `STATION-0${currentStation}`;
-        
-        // 如果這個站點已經解鎖且提交過，直接呈現完成畫面
-        if (appState.responses[`station_${currentStation}`]) {
-          document.getElementById('keyAuthModal').classList.add('hidden');
-          document.getElementById('stationFormView').classList.remove('hidden');
-          lockSubmittedForm(appState.responses[`station_${currentStation}`]);
-        }
       }
+    });
+
+    function switchStation(st) {
+      window.location.search = `?station=${st}`;
     }
 
-    // ================= 3. 渲染 29 個嫌疑人選項 =================
+    // ================= 3. 生成 29 個嫌疑人選項 =================
     function renderSuspectsGrid() {
       const grid = document.getElementById('suspectsGrid');
       grid.innerHTML = '';
 
       SUSPECTS.forEach(s => {
         const card = document.createElement('div');
-        card.className = `suspect-card cyber-card p-2.5 rounded-lg text-center border border-slate-800 hover:border-cyan-500/50 select-none`;
+        card.className = `suspect-card cyber-card p-2.5 rounded-lg text-center border border-slate-800 select-none`;
         card.id = `suspect-card-${s.id}`;
         card.onclick = () => toggleSuspect(s.id);
 
         card.innerHTML = `
-          <div class="w-10 h-10 mx-auto rounded-full bg-slate-900 border border-cyan-800 flex items-center justify-center text-cyan-400 text-xs font-mono font-bold mb-1">
+          <div class="w-9 h-9 mx-auto rounded-full bg-slate-900 border border-cyan-800 flex items-center justify-center text-cyan-400 text-xs font-mono font-bold mb-1">
             ${s.id}
           </div>
-          <div class="text-xs font-bold text-slate-200 truncate">${s.name}</div>
-          <div class="text-[10px] text-slate-500 font-mono truncate">${s.role}</div>
+          <div class="text-xs font-bold text-slate-200">${s.name}</div>
         `;
         grid.appendChild(card);
       });
@@ -407,65 +345,55 @@
       document.getElementById('selectedCount').innerText = selectedSuspects.size;
     }
 
-    // ================= 4. 金鑰驗證系統 =================
+    // ================= 4. 金鑰一次性驗證邏輯 =================
     function verifyAccessKey() {
       const inputKey = document.getElementById('accessKeyInput').value.trim().toUpperCase();
-      const msgBox = document.getElementById('authStatusMsg');
 
       if (!inputKey) {
         showAuthMsg("請輸入金鑰代碼", "error");
-        playAlarmSound();
         return;
       }
 
-      // 檢查金鑰是否合法
-      if (!DEFAULT_KEYS.includes(inputKey)) {
-        showAuthMsg("【無效金鑰】系統拒絕存取，請確認代碼是否正確。", "error");
-        playAlarmSound();
+      // 1. 檢查是否在合法金鑰列表中
+      if (!VALID_KEYS.includes(inputKey)) {
+        showAuthMsg("【無效金鑰】無此金鑰權限，請重新確認。", "error");
+        playAlarm();
         return;
       }
 
-      // 檢查金鑰是否已被使用
-      if (appState.usedKeys[inputKey] && appState.usedKeys[inputKey] !== `station_${currentStation}`) {
-        showAuthMsg(`【警告】此金鑰已被其它終端機 (${appState.usedKeys[inputKey]}) 使用過！`, "error");
-        playAlarmSound();
+      // 2. 檢查此金鑰是否「已經被使用/核銷過」
+      if (localUsedKeys[inputKey]) {
+        showAuthMsg(`【ACCESS DENIED】此金鑰 (${inputKey}) 已經被填寫並核銷過，無法再次使用！`, "error");
+        playAlarm();
         return;
       }
 
-      // 驗證成功
-      playAccessGrantedSound();
+      // 驗證成功（尚未作廢） -> 允許解鎖進入表單
       currentKey = inputKey;
-      appState.usedKeys[inputKey] = `station_${currentStation}`;
-      localStorage.setItem('sf_used_keys', JSON.stringify(appState.usedKeys));
-
       document.getElementById('activeKeyDisplay').innerText = currentKey;
       document.getElementById('keyAuthModal').classList.add('hidden');
       document.getElementById('stationFormView').classList.remove('hidden');
+      playSuccess();
     }
 
     function showAuthMsg(msg, type) {
       const msgBox = document.getElementById('authStatusMsg');
-      msgBox.classList.remove('hidden', 'bg-red-950/80', 'text-red-300', 'border-red-600', 'bg-emerald-950', 'text-emerald-300');
-      if (type === 'error') {
-        msgBox.classList.add('bg-red-950/80', 'text-red-300', 'border', 'border-red-600/50');
-      } else {
-        msgBox.classList.add('bg-emerald-950', 'text-emerald-300', 'border', 'border-emerald-600/50');
-      }
+      msgBox.classList.remove('hidden', 'bg-red-950/80', 'text-red-300', 'border-red-600');
+      msgBox.classList.add('bg-red-950/80', 'text-red-300', 'border-red-600/50');
       msgBox.innerText = msg;
     }
 
-    // ================= 5. 表單提交邏輯 =================
+    // ================= 5. 表單提交並核銷金鑰 =================
     function submitForm(e) {
       e.preventDefault();
 
       if (selectedSuspects.size === 0) {
-        alert("請至少選擇一位您推測的兇手或嫌疑人！");
+        alert("請至少選擇一位您推測的兇手！");
         return;
       }
 
       const responseData = {
         station: currentStation,
-        stationName: STATION_TITLES[currentStation],
         key: currentKey,
         suspects: Array.from(selectedSuspects),
         motive: document.getElementById('qMotive').value,
@@ -474,140 +402,93 @@
         timestamp: new Date().toLocaleString()
       };
 
-      appState.responses[`station_${currentStation}`] = responseData;
-      localStorage.setItem('sf_responses', JSON.stringify(appState.responses));
+      // 1. 標記金鑰為「已使用/已作廢」
+      localUsedKeys[currentKey] = {
+        usedAt: new Date().toLocaleString(),
+        station: currentStation
+      };
+      localStorage.setItem('sf_used_keys', JSON.stringify(localUsedKeys));
 
-      playAccessGrantedSound();
-      alert("【傳輸完成】您的調查報告已加密發送至中央主控台！");
-      lockSubmittedForm(responseData);
+      // 2. 儲存表單回答
+      localResponses.push(responseData);
+      localStorage.setItem('sf_responses', JSON.stringify(localResponses));
+
+      playSuccess();
+      alert(`【傳輸成功】金鑰 [${currentKey}] 已成功核銷並作廢！報告已送出。`);
+
+      // 3. 送出後自動重置表單並回到鎖定畫面（方便下一組玩家使用同一台電腦）
+      location.reload();
     }
 
-    function lockSubmittedForm(data) {
-      const form = document.getElementById('investigationForm');
-      const inputs = form.querySelectorAll('input, textarea, button');
-      inputs.forEach(i => i.disabled = true);
-
-      // 鎖定嫌疑人卡片點擊
-      document.querySelectorAll('.suspect-card').forEach(c => c.onclick = null);
-
-      // 呈現已送出狀態
-      const submitBtn = form.querySelector('button[type="submit"]');
-      if (submitBtn) {
-        submitBtn.className = "bg-slate-800 text-slate-400 font-bold text-lg py-4 px-12 rounded-xl cursor-not-allowed border border-slate-700";
-        submitBtn.innerHTML = `<i class="fa-solid fa-lock mr-2"></i> 報告已傳輸（已鎖定）`;
-      }
-    }
-
-    // ================= 6. 中央統整頁面 (Station 8) =================
+    // ================= 6. 站點 8 統整畫面渲染 =================
     function renderAdminDashboard() {
-      renderStatusList();
-      renderReportsGrid();
+      // 1. 渲染已使用的金鑰清單
+      const keysList = document.getElementById('usedKeysList');
+      keysList.innerHTML = '';
+      const usedKeyNames = Object.keys(localUsedKeys);
+      
+      if (usedKeyNames.length === 0) {
+        keysList.innerHTML = `<span class="text-slate-500">尚無金鑰被使用</span>`;
+      } else {
+        usedKeyNames.forEach(k => {
+          const item = document.createElement('div');
+          item.className = "flex justify-between items-center bg-slate-900/80 p-2 rounded border border-slate-800";
+          item.innerHTML = `<span class="text-amber-400 font-bold">${k}</span> <span class="text-slate-500 text-[10px]">站點 ${localUsedKeys[k].station} 核銷</span>`;
+          keysList.appendChild(item);
+        });
+      }
+
+      // 2. 渲染隊伍回答列表
+      const reportsList = document.getElementById('reportsList');
+      reportsList.innerHTML = '';
+
+      if (localResponses.length === 0) {
+        reportsList.innerHTML = `<div class="col-span-full text-center text-slate-500 py-8">尚無任何提交紀錄</div>`;
+      } else {
+        localResponses.forEach((resp, index) => {
+          const card = document.createElement('div');
+          card.className = "cyber-card p-5 rounded-xl space-y-3 border-t-2 border-t-cyan-400";
+          
+          const suspectBadges = resp.suspects.map(id => `<span class="bg-cyan-950 text-cyan-300 border border-cyan-800 text-xs px-2 py-0.5 rounded font-mono">${id}</span>`).join(' ');
+
+          card.innerHTML = `
+            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+              <span class="font-bold text-cyan-300 font-orbitron">#${index + 1} 站點 ${resp.station} (金鑰: ${resp.key})</span>
+              <span class="text-[10px] text-slate-500 font-mono">${resp.timestamp}</span>
+            </div>
+            <div><span class="text-xs text-slate-400">指控兇手：</span><div class="flex flex-wrap gap-1 mt-1">${suspectBadges}</div></div>
+            <div><span class="text-xs text-slate-400">作案動機：</span><p class="text-xs text-slate-200 mt-1 bg-slate-900/60 p-2 rounded border border-slate-800">${resp.motive}</p></div>
+            <div><span class="text-xs text-slate-400">異常原因：</span><p class="text-xs text-slate-200 mt-1 bg-slate-900/60 p-2 rounded border border-slate-800">${resp.anomaly}</p></div>
+            <div><span class="text-xs text-slate-400">核銷代碼：</span><div class="text-xs font-mono text-amber-300 mt-0.5">${resp.codes}</div></div>
+          `;
+          reportsList.appendChild(card);
+        });
+      }
+
+      // 3. 渲染柱狀圖
       renderChart();
-    }
-
-    function renderStatusList() {
-      const list = document.getElementById('stationStatusList');
-      list.innerHTML = '';
-
-      for (let i = 1; i <= 7; i++) {
-        const resp = appState.responses[`station_${i}`];
-        const item = document.createElement('div');
-        item.className = "flex justify-between items-center p-2 rounded bg-slate-900 border border-slate-800";
-        
-        if (resp) {
-          item.innerHTML = `
-            <span class="text-slate-300 font-bold">站點 ${i} (${resp.key})</span>
-            <span class="text-emerald-400 font-mono"><i class="fa-solid fa-circle-check mr-1"></i>已傳輸</span>
-          `;
-        } else {
-          item.innerHTML = `
-            <span class="text-slate-500">站點 ${i}</span>
-            <span class="text-amber-500/70 font-mono"><i class="fa-solid fa-clock mr-1"></i>待調查</span>
-          `;
-        }
-        list.appendChild(item);
-      }
-    }
-
-    function renderReportsGrid() {
-      const grid = document.getElementById('reportsGrid');
-      grid.innerHTML = '';
-
-      let hasReport = false;
-      for (let i = 1; i <= 7; i++) {
-        const resp = appState.responses[`station_${i}`];
-        if (!resp) continue;
-        hasReport = true;
-
-        const card = document.createElement('div');
-        card.className = "cyber-card p-5 rounded-xl space-y-3 relative border-t-2 border-t-cyan-400";
-        
-        const suspectBadges = resp.suspects.map(id => {
-          return `<span class="bg-cyan-950 text-cyan-300 border border-cyan-700 text-[11px] px-2 py-0.5 rounded font-mono">${id}</span>`;
-        }).join(' ');
-
-        card.innerHTML = `
-          <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-            <span class="font-bold text-cyan-300 font-orbitron">STATION-0${resp.station} 匯報</span>
-            <span class="text-[10px] text-slate-500 font-mono">${resp.timestamp}</span>
-          </div>
-          <div>
-            <div class="text-xs text-slate-400 mb-1">指控嫌疑人：</div>
-            <div class="flex flex-wrap gap-1">${suspectBadges}</div>
-          </div>
-          <div>
-            <div class="text-xs text-slate-400">作案動機推測：</div>
-            <p class="text-xs text-slate-200 mt-0.5 bg-slate-900/60 p-2 rounded border border-slate-800/80">${escapeHtml(resp.motive)}</p>
-          </div>
-          <div>
-            <div class="text-xs text-slate-400">系統異常原因：</div>
-            <p class="text-xs text-slate-200 mt-0.5 bg-slate-900/60 p-2 rounded border border-slate-800/80">${escapeHtml(resp.anomaly)}</p>
-          </div>
-          <div>
-            <div class="text-xs text-slate-400">核銷代碼：</div>
-            <div class="text-xs font-mono text-amber-300 mt-0.5">${escapeHtml(resp.codes)}</div>
-          </div>
-        `;
-        grid.appendChild(card);
-      }
-
-      if (!hasReport) {
-        grid.innerHTML = `
-          <div class="col-span-full cyber-card p-8 text-center text-slate-500 text-sm">
-            <i class="fa-solid fa-inbox text-3xl mb-2 text-slate-600 block"></i>
-            目前尚未收到任何站點傳回的調查報告
-          </div>
-        `;
-      }
     }
 
     function renderChart() {
       const ctx = document.getElementById('suspectsChart').getContext('2d');
-      
-      // 統計票數
       const tally = {};
       SUSPECTS.forEach(s => tally[s.id] = 0);
 
-      Object.values(appState.responses).forEach(resp => {
+      localResponses.forEach(resp => {
         if (resp.suspects) {
-          resp.suspects.forEach(id => {
-            tally[id] = (tally[id] || 0) + 1;
-          });
+          resp.suspects.forEach(id => { tally[id] = (tally[id] || 0) + 1; });
         }
       });
-
-      const labels = Object.keys(tally);
-      const counts = Object.values(tally);
 
       if (chartInstance) chartInstance.destroy();
 
       chartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
-          labels: labels,
+          labels: Object.keys(tally),
           datasets: [{
-            label: '得票數 (Votes)',
-            data: counts,
+            label: '得票數',
+            data: Object.values(tally),
             backgroundColor: 'rgba(0, 240, 255, 0.5)',
             borderColor: '#00f0ff',
             borderWidth: 1
@@ -617,93 +498,44 @@
           responsive: true,
           maintainAspectRatio: false,
           scales: {
-            y: { beginAtZero: true, ticks: { precision: 0, color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
-            x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { display: false } }
+            y: { beginAtZero: true, ticks: { color: '#94a3b8', stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            x: { ticks: { color: '#94a3b8', font: { size: 9 } }, grid: { display: false } }
           },
-          plugins: {
-            legend: { display: false }
-          }
+          plugins: { legend: { display: false } }
         }
       });
     }
 
-    // ================= 7. 工具函式與音效 (Web Audio API) =================
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function resetAllGameData() {
+      if (confirm("確定要重置所有紀錄與回復所有金鑰嗎？")) {
+        localStorage.removeItem('sf_used_keys');
+        localStorage.removeItem('sf_responses');
+        localUsedKeys = {};
+        localResponses = [];
+        renderAdminDashboard();
+        alert("資料庫已全數重置！");
+      }
+    }
 
+    // 音效控制
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     function toggleAudio() {
       audioMuted = !audioMuted;
       document.getElementById('audioIcon').className = audioMuted ? "fa-solid fa-volume-xmark" : "fa-solid fa-volume-high";
     }
-
-    function playBeep(freq = 800, duration = 0.05) {
+    function playBeep(freq, dur) {
       if (audioMuted) return;
       try {
         const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
+        const g = audioCtx.createGain();
         osc.frequency.value = freq;
-        gain.gain.value = 0.05;
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + duration);
-      } catch (e) {}
+        g.gain.value = 0.05;
+        osc.connect(g); g.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + dur);
+      } catch(e){}
     }
-
-    function playAccessGrantedSound() {
-      if (audioMuted) return;
-      try {
-        playBeep(523.25, 0.08);
-        setTimeout(() => playBeep(659.25, 0.08), 80);
-        setTimeout(() => playBeep(783.99, 0.15), 160);
-      } catch (e) {}
-    }
-
-    function playAlarmSound() {
-      if (audioMuted) return;
-      try {
-        playBeep(200, 0.15);
-        setTimeout(() => playBeep(150, 0.2), 150);
-      } catch (e) {}
-    }
-
-    function escapeHtml(str) {
-      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    }
-
-    function exportData(type) {
-      const dataStr = type === 'json' 
-        ? "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appState, null, 2))
-        : "data:text/csv;charset=utf-8," + encodeURIComponent(convertToCSV(appState.responses));
-      
-      const downloadAnchor = document.createElement('a');
-      downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", `spaceship_mystery_export.${type}`);
-      document.body.appendChild(downloadAnchor);
-      downloadAnchor.click();
-      downloadAnchor.remove();
-    }
-
-    function convertToCSV(obj) {
-      const items = Object.values(obj);
-      if (items.length === 0) return "No Data";
-      const replacer = (key, value) => value === null ? '' : value;
-      const header = Object.keys(items[0]);
-      const csv = [
-        header.join(','),
-        ...items.map(row => header.map(fieldName => JSON.stringify(row[fieldName], replacer)).join(','))
-      ].join('\r\n');
-      return csv;
-    }
-
-    function resetGameData() {
-      if (confirm("確定要重置所有站點的數據與金鑰紀錄嗎？此動作無法復原。")) {
-        localStorage.removeItem('sf_used_keys');
-        localStorage.removeItem('sf_responses');
-        appState = { usedKeys: {}, responses: {} };
-        renderAdminDashboard();
-        alert("資料庫已重置完成。");
-      }
-    }
+    function playSuccess() { playBeep(523, 0.08); setTimeout(()=>playBeep(783, 0.15), 80); }
+    function playAlarm() { playBeep(180, 0.2); }
   </script>
 </body>
 </html>
