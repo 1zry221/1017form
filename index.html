@@ -73,15 +73,14 @@
         </div>
         <div>
           <h2 class="font-orbitron text-2xl font-bold text-cyan-300 tracking-wide">SECURITY GATEWAY</h2>
-          <p class="text-xs text-slate-400 mt-1">請輸入您的專屬解鎖金鑰</p>
+          <p class="text-xs text-slate-400 mt-1">請輸入您的專屬解鎖金鑰 (例如: KEY-01 或 1)</p>
         </div>
 
-        <!-- 使用 Form 表單，確保按下 Enter 或點擊按鈕都能正確發送 -->
-        <form onsubmit="handleKeySubmit(event)" class="space-y-4">
+        <form id="keyForm" onsubmit="handleKeySubmit(event)" class="space-y-4">
           <input type="text" id="accessKeyInput" placeholder="請輸入金鑰" 
             class="w-full bg-slate-900/90 border border-cyan-500/50 rounded-lg px-4 py-3 text-center text-cyan-200 font-mono tracking-widest uppercase focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/30 transition">
           
-          <button type="submit" class="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 active:scale-95 text-white font-bold py-3 px-6 rounded-lg font-orbitron tracking-wider shadow-lg shadow-cyan-500/20 transition cursor-pointer relative z-10">
+          <button type="submit" id="unlockBtn" class="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 active:scale-95 text-white font-bold py-3 px-6 rounded-lg font-orbitron tracking-wider shadow-lg shadow-cyan-500/20 transition cursor-pointer relative z-10">
             驗證並解鎖 <i class="fa-solid fa-key ml-2"></i>
           </button>
         </form>
@@ -251,44 +250,18 @@
   </main>
 
   <script>
-    // =========================================================================
-    // 💡【修改區塊 1】：7 個站點各自的標題與介紹文字 (可自由編輯)
-    // =========================================================================
+    // 1. 站點設定
     const STATION_CONFIG = {
-      1: {
-        title: "站點 1：【請在此替換站點1標題】",
-        intro: "【站點 1 表單介紹】這裡填寫站點 1 的劇情說明、艙區簡報或是對玩家的提醒文字。"
-      },
-      2: {
-        title: "站點 2：【請在此替換站點2標題】",
-        intro: "【站點 2 表單介紹】這裡填寫站點 2 的劇情說明、艙區簡報或是對玩家的提醒文字。"
-      },
-      3: {
-        title: "站點 3：【請在此替換站點3標題】",
-        intro: "【站點 3 表單介紹】這裡填寫站點 3 的劇情說明、艙區簡報或是對玩家的提醒文字。"
-      },
-      4: {
-        title: "站點 4：【請在此替換站點4標題】",
-        intro: "【站點 4 表單介紹】這裡填寫站點 4 的劇情說明、艙區簡報或是對玩家的提醒文字。"
-      },
-      5: {
-        title: "站點 5：【請在此替換站點5標題】",
-        intro: "【站點 5 表單介紹】這裡填寫站點 5 的劇情說明、艙區簡報或是對玩家的提醒文字。"
-      },
-      6: {
-        title: "站點 6：【請在此替換站點6標題】",
-        intro: "【站點 6 表單介紹】這裡填寫站點 6 的劇情說明、艙區簡報或是對玩家的提醒文字。"
-      },
-      7: {
-        title: "站點 7：【請在此替換站點7標題】",
-        intro: "【站點 7 表單介紹】這裡填寫站點 7 的劇情說明、艙區簡報或是對玩家的提醒文字。"
-      }
+      1: { title: "站點 1：【請在此替換站點1標題】", intro: "【站點 1 表單介紹】這裡填寫站點 1 的劇情說明、艙區簡報或是對玩家的提醒文字。" },
+      2: { title: "站點 2：【請在此替換站點2標題】", intro: "【站點 2 表單介紹】這裡填寫站點 2 的劇情說明、艙區簡報或是對玩家的提醒文字。" },
+      3: { title: "站點 3：【請在此替換站點3標題】", intro: "【站點 3 表單介紹】這裡填寫站點 3 的劇情說明、艙區簡報或是對玩家的提醒文字。" },
+      4: { title: "站點 4：【請在此替換站點4標題】", intro: "【站點 4 表單介紹】這裡填寫站點 4 的劇情說明、艙區簡報或是對玩家的提醒文字。" },
+      5: { title: "站點 5：【請在此替換站點5標題】", intro: "【站點 5 表單介紹】這裡填寫站點 5 的劇情說明、艙區簡報或是對玩家的提醒文字。" },
+      6: { title: "站點 6：【請在此替換站點6標題】", intro: "【站點 6 表單介紹】這裡填寫站點 6 的劇情說明、艙區簡報或是對玩家的提醒文字。" },
+      7: { title: "站點 7：【請在此替換站點7標題】", intro: "【站點 7 表單介紹】這裡填寫站點 7 的劇情說明、艙區簡報或是對玩家的提醒文字。" }
     };
 
-
-    // =========================================================================
-    // 💡【修改區塊 2】：29 位角色的名字與身份 (可自由編輯)
-    // =========================================================================
+    // 2. 嫌疑人設定
     const SUSPECTS = [
       { id: "S01", name: "【角色 01 姓名】", title: "身份/職務代號" },
       { id: "S02", name: "【角色 02 姓名】", title: "身份/職務代號" },
@@ -321,11 +294,7 @@
       { id: "S29", name: "【角色 29 姓名】", title: "身份/職務代號" }
     ];
 
-
-    // =========================================================================
-    // 💡【修改區塊 3】：合法金鑰庫 (您可以將裡面的字串改為任何您自訂的金鑰)
-    // 例如可以改成: ["PASS01", "SECRET_A", "VIP_KEY_88", ...] 數量可隨意增減
-    // =========================================================================
+    // 3. 金鑰庫
     const VALID_KEYS = [
       "KEY-01", "KEY-02", "KEY-03", "KEY-04", "KEY-05",
       "KEY-06", "KEY-07", "KEY-08", "KEY-09", "KEY-10",
@@ -335,17 +304,14 @@
       "KEY-26", "KEY-27", "KEY-28", "KEY-29"
     ];
 
-
-    // =========================================================================
-    // ⚙️ 系統核心邏輯 (一般不需要修改)
-    // =========================================================================
+    // 全域變數
     let currentStation = 1;
     let currentKey = "";
     let selectedSuspects = new Set();
     let chartInstance = null;
     let audioMuted = false;
 
-    // 安全儲存模組 (防無痕模式或限制 localStorage 的手機瀏覽器卡死)
+    // 安全 LocalStorage 讀寫
     const memoryStore = {};
     const safeStorage = {
       getItem(key) {
@@ -362,21 +328,18 @@
       }
     };
 
-    // 彈性金鑰正規化比對 (自動忽略空格、大小寫，也支援直接打數字比對 KEY-XX)
+    // 金鑰格式化比對
     function normalizeKey(str) {
       if (!str) return "";
       let rawClean = str.trim().toUpperCase();
 
-      // 1. 精確/不分大小寫比對 VALID_KEYS
       let directMatch = VALID_KEYS.find(k => k.trim().toUpperCase() === rawClean);
       if (directMatch) return directMatch;
 
-      // 2. 移除符號再比對
       let noSymbolClean = rawClean.replace(/[^A-Z0-9]/g, '');
       let altMatch = VALID_KEYS.find(k => k.replace(/[^A-Z0-9]/g, '').toUpperCase() === noSymbolClean);
       if (altMatch) return altMatch;
 
-      // 3. 若輸入純數字 (例如 "1" 或 "01") 嘗試對應 "KEY-01" 格式
       if (/^\d+$/.test(rawClean)) {
         let numStr = String(parseInt(rawClean, 10)).padStart(2, '0');
         let keyCandidate = `KEY-${numStr}`;
@@ -399,18 +362,19 @@
       } catch(e) { return []; }
     }
 
-    // 頁面載入初始化
+    // 初始化
     window.addEventListener('DOMContentLoaded', () => {
       try {
         const urlParams = new URLSearchParams(window.location.search);
-        const st = parseInt(urlParams.get('station'));
-        if (st >= 1 && st <= 8) currentStation = st;
+        const st = parseInt(urlParams.get('station'), 10);
+        if (!isNaN(st) && st >= 1 && st <= 8) currentStation = st;
         
         renderSuspectsGrid();
 
         if (currentStation === 8) {
-          document.getElementById('keyAuthModal').classList.add('hidden');
-          document.getElementById('stationFormView').classList.add('hidden');
+          const modal = document.getElementById('keyAuthModal');
+          if (modal) modal.style.display = 'none';
+          document.getElementById('stationFormView').style.display = 'none';
           document.getElementById('adminDashboardView').classList.remove('hidden');
           renderAdminDashboard();
         } else {
@@ -424,7 +388,6 @@
       }
     });
 
-    // 渲染 29 位嫌疑人卡片
     function renderSuspectsGrid() {
       const grid = document.getElementById('suspectsGrid');
       if (!grid) return;
@@ -462,10 +425,14 @@
       document.getElementById('selectedCount').innerText = selectedSuspects.size;
     }
 
-    // 金鑰提交處理
+    // 金鑰送出觸發點
     function handleKeySubmit(e) {
-      if (e) e.preventDefault();
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
       verifyAccessKey();
+      return false;
     }
 
     function verifyAccessKey() {
@@ -482,31 +449,35 @@
           return;
         }
 
-        // 檢查是否在自訂的 VALID_KEYS 陣列中
         if (!VALID_KEYS.includes(matchedKey)) {
-          showAuthMsg("【無效金鑰】無此金鑰權限，請重新確認。", "error");
+          showAuthMsg(`【無效金鑰】找不到「${rawVal}」，請確認無誤。`, "error");
           playAlarm();
           return;
         }
 
-        // 檢查該金鑰是否被使用過
         const usedKeys = getUsedKeys();
         if (usedKeys[matchedKey]) {
-          showAuthMsg(`【ACCESS DENIED】金鑰 (${matchedKey}) 已被使用過！`, "error");
+          showAuthMsg(`【ACCESS DENIED】金鑰 (${matchedKey}) 已被使用過！<br><button onclick="resetAllGameData()" class="underline text-red-300 font-bold mt-1">按此重置所有測試紀錄</button>`, "error");
           playAlarm();
           return;
         }
 
-        // 驗證成功 -> 解鎖表單
+        // 解鎖表單
         currentKey = matchedKey;
         const activeKeyElem = document.getElementById('activeKeyDisplay');
         if (activeKeyElem) activeKeyElem.innerText = currentKey;
 
         const modalElem = document.getElementById('keyAuthModal');
-        if (modalElem) modalElem.classList.add('hidden');
+        if (modalElem) {
+          modalElem.classList.add('hidden');
+          modalElem.style.display = 'none'; // 雙重保護隱藏彈窗
+        }
 
         const formViewElem = document.getElementById('stationFormView');
-        if (formViewElem) formViewElem.classList.remove('hidden');
+        if (formViewElem) {
+          formViewElem.classList.remove('hidden');
+          formViewElem.style.display = 'block';
+        }
 
         playSuccess();
       } catch (err) {
@@ -517,12 +488,12 @@
     function showAuthMsg(msg, type) {
       const msgBox = document.getElementById('authStatusMsg');
       if (!msgBox) return;
-      msgBox.classList.remove('hidden', 'bg-red-950/80', 'text-red-300', 'border-red-600');
-      msgBox.classList.add('bg-red-950/80', 'text-red-300', 'border-red-600/50');
-      msgBox.innerText = msg;
+      msgBox.classList.remove('hidden');
+      msgBox.className = "text-xs p-2.5 rounded border font-mono bg-red-950/80 text-red-300 border-red-600/50 mt-2";
+      msgBox.innerHTML = msg;
     }
 
-    // 表單提交處理
+    // 表單提交
     function submitForm(e) {
       if (e) e.preventDefault();
 
@@ -556,8 +527,7 @@
 
         playSuccess();
 
-        // 顯示感謝作答畫面
-        document.getElementById('stationFormView').classList.add('hidden');
+        document.getElementById('stationFormView').style.display = 'none';
         document.getElementById('thankYouView').classList.remove('hidden');
         document.getElementById('thankKeyDisplay').innerText = currentKey;
         document.getElementById('thankTimeDisplay').innerText = nowTime;
@@ -566,7 +536,7 @@
       }
     }
 
-    // 站點 8 統整主控台渲染
+    // 站點 8 統整
     function renderAdminDashboard() {
       const usedKeys = getUsedKeys();
       const responses = getResponses();
@@ -666,8 +636,7 @@
       if (confirm("確定要重置所有提交紀錄與回復所有金鑰嗎？")) {
         safeStorage.removeItem('sf_used_keys');
         safeStorage.removeItem('sf_responses');
-        renderAdminDashboard();
-        alert("資料庫已全數重置！");
+        location.reload();
       }
     }
 
@@ -675,7 +644,7 @@
       return (str || '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
 
-    // 安全音效模組
+    // 音效模組
     let audioCtx = null;
     function getAudioContext() {
       if (!audioCtx) {
@@ -683,9 +652,6 @@
           const AudioContextClass = window.AudioContext || window.webkitAudioContext;
           if (AudioContextClass) audioCtx = new AudioContextClass();
         } catch(e) {}
-      }
-      if (audioCtx && audioCtx.state === 'suspended') {
-        try { audioCtx.resume(); } catch(e) {}
       }
       return audioCtx;
     }
@@ -701,6 +667,7 @@
       try {
         const ctx = getAudioContext();
         if (!ctx) return;
+        if (ctx.state === 'suspended') ctx.resume();
         const osc = ctx.createOscillator();
         const g = ctx.createGain();
         osc.frequency.value = freq;
