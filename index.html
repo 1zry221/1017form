@@ -161,4 +161,565 @@
             <span class="text-xs text-slate-400 font-normal">（選填）</span>
           </h2>
           <input type="text" id="qRedemptionCodes" placeholder="請輸入核銷代碼 (若無可不填)..." 
-            class="
+            class="w-full bg-slate-900/80 border border-cyan-900/60 rounded-lg p-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-400 transition font-mono">
+        </div>
+
+        <!-- 送出按鈕 -->
+        <div class="text-center pt-4">
+          <button type="submit" id="submitBtn" class="bg-gradient-to-r from-cyan-500 to-emerald-600 hover:from-cyan-400 hover:to-emerald-500 text-slate-950 font-bold text-lg py-4 px-12 rounded-xl shadow-lg shadow-cyan-500/20 tracking-wider font-orbitron transition duration-200 transform hover:scale-105 cursor-pointer">
+            傳輸報告 <i class="fa-solid fa-paper-plane ml-2"></i>
+          </button>
+        </div>
+      </form>
+    </div>
+
+
+    <!-- ================= 3. 作答完成「感謝作答」畫面 ================= -->
+    <div id="thankYouView" class="hidden cyber-card p-8 rounded-xl text-center space-y-6 max-w-lg mx-auto my-12 relative">
+      <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-emerald-950 border border-emerald-500 text-emerald-400 text-3xl mb-2">
+        <i class="fa-solid fa-circle-check animate-bounce"></i>
+      </div>
+      <div>
+        <h2 class="font-orbitron text-2xl font-bold text-emerald-300 tracking-wide">傳輸成功！感謝作答</h2>
+        <p class="text-sm text-slate-300 mt-2 leading-relaxed">
+          您的調查推理報告已加密傳輸至中央統整主控台。<br>金鑰已完成核銷，您可以關閉此視窗。
+        </p>
+      </div>
+
+      <div class="p-4 bg-slate-900/80 rounded-lg border border-slate-800 text-xs font-mono text-slate-400 space-y-1 text-left">
+        <div>・ 核銷金鑰：<span id="thankKeyDisplay" class="text-cyan-400 font-bold">---</span></div>
+        <div>・ 傳輸時間：<span id="thankTimeDisplay" class="text-cyan-400">---</span></div>
+        <div>・ 傳輸狀態：<span class="text-emerald-400">SUCCESSFULLY LOGGED</span></div>
+      </div>
+    </div>
+
+
+    <!-- ================= 4. 站點 8 統整主控台 (STATION 8 / ADMIN) ================= -->
+    <div id="adminDashboardView" class="hidden space-y-8">
+      <div class="cyber-card p-6 rounded-xl border-l-4 border-l-amber-500 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <div class="flex items-center space-x-2">
+            <span class="bg-amber-950 text-amber-400 border border-amber-800 text-xs px-2.5 py-0.5 rounded font-mono">STATION-08</span>
+            <span class="text-xs text-slate-400 font-mono">CENTRAL COMMAND</span>
+          </div>
+          <h1 class="text-2xl sm:text-3xl font-bold text-amber-200 mt-1 font-orbitron">全船推理結果統整主控台</h1>
+        </div>
+
+        <div class="flex items-center space-x-4">
+          <div class="bg-slate-900/90 border border-cyan-800 px-4 py-2 rounded-lg text-center">
+            <div class="text-[10px] text-slate-400 font-mono">已繳交總份數</div>
+            <div id="totalSubmissionsCount" class="text-2xl font-bold text-cyan-300 font-orbitron">0</div>
+          </div>
+          <button type="button" onclick="resetAllGameData()" class="bg-red-950/80 hover:bg-red-900 text-red-300 border border-red-700/50 text-xs px-3 py-2.5 rounded font-mono cursor-pointer">
+            <i class="fa-solid fa-rotate-right mr-1"></i> 重置所有紀錄
+          </button>
+        </div>
+      </div>
+
+      <!-- 圖表與金鑰作廢狀態 -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="cyber-card p-5 rounded-xl lg:col-span-2 space-y-4">
+          <h3 class="font-bold text-cyan-300 text-sm font-orbitron flex items-center">
+            <i class="fa-solid fa-chart-column mr-2 text-cyan-400"></i> 29 位嫌疑人指控得票統計
+          </h3>
+          <div class="h-64">
+            <canvas id="suspectsChart"></canvas>
+          </div>
+        </div>
+
+        <div class="cyber-card p-5 rounded-xl space-y-4">
+          <h3 class="font-bold text-cyan-300 text-sm font-orbitron flex items-center">
+            <i class="fa-solid fa-key mr-2 text-cyan-400"></i> 金鑰核銷狀態監控 (已用 / 總數)
+          </h3>
+          <div id="usedKeysGrid" class="grid grid-cols-4 sm:grid-cols-5 gap-1.5 text-center text-xs font-mono max-h-60 overflow-y-auto">
+            <!-- 動態顯示所有金鑰方塊 -->
+          </div>
+        </div>
+      </div>
+
+      <!-- 詳細回答列表 -->
+      <div class="space-y-4">
+        <h2 class="text-xl font-bold text-cyan-200 font-orbitron flex items-center">
+          <i class="fa-solid fa-inbox mr-2 text-cyan-400"></i> 所有隊員回覆紀錄
+        </h2>
+        <div id="reportsList" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- 動態渲染各隊伍提交的回答 -->
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    // =========================================================================
+    // 💡【修改區塊 1】：7 個站點各自的標題與介紹文字 (可自由編輯)
+    // =========================================================================
+    const STATION_CONFIG = {
+      1: {
+        title: "站點 1：【請在此替換站點1標題】",
+        intro: "【站點 1 表單介紹】這裡填寫站點 1 的劇情說明、艙區簡報或是對玩家的提醒文字。"
+      },
+      2: {
+        title: "站點 2：【請在此替換站點2標題】",
+        intro: "【站點 2 表單介紹】這裡填寫站點 2 的劇情說明、艙區簡報或是對玩家的提醒文字。"
+      },
+      3: {
+        title: "站點 3：【請在此替換站點3標題】",
+        intro: "【站點 3 表單介紹】這裡填寫站點 3 的劇情說明、艙區簡報或是對玩家的提醒文字。"
+      },
+      4: {
+        title: "站點 4：【請在此替換站點4標題】",
+        intro: "【站點 4 表單介紹】這裡填寫站點 4 的劇情說明、艙區簡報或是對玩家的提醒文字。"
+      },
+      5: {
+        title: "站點 5：【請在此替換站點5標題】",
+        intro: "【站點 5 表單介紹】這裡填寫站點 5 的劇情說明、艙區簡報或是對玩家的提醒文字。"
+      },
+      6: {
+        title: "站點 6：【請在此替換站點6標題】",
+        intro: "【站點 6 表單介紹】這裡填寫站點 6 的劇情說明、艙區簡報或是對玩家的提醒文字。"
+      },
+      7: {
+        title: "站點 7：【請在此替換站點7標題】",
+        intro: "【站點 7 表單介紹】這裡填寫站點 7 的劇情說明、艙區簡報或是對玩家的提醒文字。"
+      }
+    };
+
+
+    // =========================================================================
+    // 💡【修改區塊 2】：29 位角色的名字與身份 (可自由編輯)
+    // =========================================================================
+    const SUSPECTS = [
+      { id: "S01", name: "【角色 01 姓名】", title: "身份/職務代號" },
+      { id: "S02", name: "【角色 02 姓名】", title: "身份/職務代號" },
+      { id: "S03", name: "【角色 03 姓名】", title: "身份/職務代號" },
+      { id: "S04", name: "【角色 04 姓名】", title: "身份/職務代號" },
+      { id: "S05", name: "【角色 05 姓名】", title: "身份/職務代號" },
+      { id: "S06", name: "【角色 06 姓名】", title: "身份/職務代號" },
+      { id: "S07", name: "【角色 07 姓名】", title: "身份/職務代號" },
+      { id: "S08", name: "【角色 08 姓名】", title: "身份/職務代號" },
+      { id: "S09", name: "【角色 09 姓名】", title: "身份/職務代號" },
+      { id: "S10", name: "【角色 10 姓名】", title: "身份/職務代號" },
+      { id: "S11", name: "【角色 11 姓名】", title: "身份/職務代號" },
+      { id: "S12", name: "【角色 12 姓名】", title: "身份/職務代號" },
+      { id: "S13", name: "【角色 13 姓名】", title: "身份/職務代號" },
+      { id: "S14", name: "【角色 14 姓名】", title: "身份/職務代號" },
+      { id: "S15", name: "【角色 15 姓名】", title: "身份/職務代號" },
+      { id: "S16", name: "【角色 16 姓名】", title: "身份/職務代號" },
+      { id: "S17", name: "【角色 17 姓名】", title: "身份/職務代號" },
+      { id: "S18", name: "【角色 18 姓名】", title: "身份/職務代號" },
+      { id: "S19", name: "【角色 19 姓名】", title: "身份/職務代號" },
+      { id: "S20", name: "【角色 20 姓名】", title: "身份/職務代號" },
+      { id: "S21", name: "【角色 21 姓名】", title: "身份/職務代號" },
+      { id: "S22", name: "【角色 22 姓名】", title: "身份/職務代號" },
+      { id: "S23", name: "【角色 23 姓名】", title: "身份/職務代號" },
+      { id: "S24", name: "【角色 24 姓名】", title: "身份/職務代號" },
+      { id: "S25", name: "【角色 25 姓名】", title: "身份/職務代號" },
+      { id: "S26", name: "【角色 26 姓名】", title: "身份/職務代號" },
+      { id: "S27", name: "【角色 27 姓名】", title: "身份/職務代號" },
+      { id: "S28", name: "【角色 28 姓名】", title: "身份/職務代號" },
+      { id: "S29", name: "【角色 29 姓名】", title: "身份/職務代號" }
+    ];
+
+
+    // =========================================================================
+    // 💡【修改區塊 3】：合法金鑰庫 (您可以將裡面的字串改為任何您自訂的金鑰)
+    // 例如可以改成: ["PASS01", "SECRET_A", "VIP_KEY_88", ...] 數量可隨意增減
+    // =========================================================================
+    const VALID_KEYS = [
+      "KEY-01", "KEY-02", "KEY-03", "KEY-04", "KEY-05",
+      "KEY-06", "KEY-07", "KEY-08", "KEY-09", "KEY-10",
+      "KEY-11", "KEY-12", "KEY-13", "KEY-14", "KEY-15",
+      "KEY-16", "KEY-17", "KEY-18", "KEY-19", "KEY-20",
+      "KEY-21", "KEY-22", "KEY-23", "KEY-24", "KEY-25",
+      "KEY-26", "KEY-27", "KEY-28", "KEY-29"
+    ];
+
+
+    // =========================================================================
+    // ⚙️ 系統核心邏輯 (一般不需要修改)
+    // =========================================================================
+    let currentStation = 1;
+    let currentKey = "";
+    let selectedSuspects = new Set();
+    let chartInstance = null;
+    let audioMuted = false;
+
+    // 安全儲存模組 (防無痕模式或限制 localStorage 的手機瀏覽器卡死)
+    const memoryStore = {};
+    const safeStorage = {
+      getItem(key) {
+        try { return localStorage.getItem(key); }
+        catch(e) { return memoryStore[key] || null; }
+      },
+      setItem(key, val) {
+        try { localStorage.setItem(key, val); }
+        catch(e) { memoryStore[key] = val; }
+      },
+      removeItem(key) {
+        try { localStorage.removeItem(key); }
+        catch(e) { delete memoryStore[key]; }
+      }
+    };
+
+    // 彈性金鑰正規化比對 (自動忽略空格、大小寫，也支援直接打數字比對 KEY-XX)
+    function normalizeKey(str) {
+      if (!str) return "";
+      let rawClean = str.trim().toUpperCase();
+
+      // 1. 精確/不分大小寫比對 VALID_KEYS
+      let directMatch = VALID_KEYS.find(k => k.trim().toUpperCase() === rawClean);
+      if (directMatch) return directMatch;
+
+      // 2. 移除符號再比對
+      let noSymbolClean = rawClean.replace(/[^A-Z0-9]/g, '');
+      let altMatch = VALID_KEYS.find(k => k.replace(/[^A-Z0-9]/g, '').toUpperCase() === noSymbolClean);
+      if (altMatch) return altMatch;
+
+      // 3. 若輸入純數字 (例如 "1" 或 "01") 嘗試對應 "KEY-01" 格式
+      if (/^\d+$/.test(rawClean)) {
+        let numStr = String(parseInt(rawClean, 10)).padStart(2, '0');
+        let keyCandidate = `KEY-${numStr}`;
+        let numMatch = VALID_KEYS.find(k => k.trim().toUpperCase() === keyCandidate);
+        if (numMatch) return numMatch;
+      }
+
+      return rawClean;
+    }
+
+    function getUsedKeys() {
+      try {
+        return JSON.parse(safeStorage.getItem('sf_used_keys') || '{}');
+      } catch(e) { return {}; }
+    }
+
+    function getResponses() {
+      try {
+        return JSON.parse(safeStorage.getItem('sf_responses') || '[]');
+      } catch(e) { return []; }
+    }
+
+    // 頁面載入初始化
+    window.addEventListener('DOMContentLoaded', () => {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const st = parseInt(urlParams.get('station'));
+        if (st >= 1 && st <= 8) currentStation = st;
+        
+        renderSuspectsGrid();
+
+        if (currentStation === 8) {
+          document.getElementById('keyAuthModal').classList.add('hidden');
+          document.getElementById('stationFormView').classList.add('hidden');
+          document.getElementById('adminDashboardView').classList.remove('hidden');
+          renderAdminDashboard();
+        } else {
+          const config = STATION_CONFIG[currentStation] || STATION_CONFIG[1];
+          document.getElementById('stationTitle').innerText = config.title;
+          document.getElementById('stationIntro').innerText = config.intro;
+          document.getElementById('stationBadge').innerText = `STATION-0${currentStation}`;
+        }
+      } catch(err) {
+        console.error("Initialization Error:", err);
+      }
+    });
+
+    // 渲染 29 位嫌疑人卡片
+    function renderSuspectsGrid() {
+      const grid = document.getElementById('suspectsGrid');
+      if (!grid) return;
+      grid.innerHTML = '';
+
+      SUSPECTS.forEach(s => {
+        const card = document.createElement('div');
+        card.className = `suspect-card cyber-card p-2.5 rounded-lg text-center border border-slate-800 select-none`;
+        card.id = `suspect-card-${s.id}`;
+        card.onclick = () => toggleSuspect(s.id);
+
+        card.innerHTML = `
+          <div class="w-8 h-8 mx-auto rounded-full bg-slate-900 border border-cyan-800 flex items-center justify-center text-cyan-400 text-xs font-mono font-bold mb-1">
+            ${s.id}
+          </div>
+          <div class="text-xs font-bold text-slate-200 truncate">${s.name}</div>
+          <div class="text-[10px] text-slate-500 font-mono truncate">${s.title}</div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function toggleSuspect(id) {
+      playBeep(800, 0.03);
+      const card = document.getElementById(`suspect-card-${id}`);
+      if (!card) return;
+      
+      if (selectedSuspects.has(id)) {
+        selectedSuspects.delete(id);
+        card.classList.remove('selected');
+      } else {
+        selectedSuspects.add(id);
+        card.classList.add('selected');
+      }
+      document.getElementById('selectedCount').innerText = selectedSuspects.size;
+    }
+
+    // 金鑰提交處理
+    function handleKeySubmit(e) {
+      if (e) e.preventDefault();
+      verifyAccessKey();
+    }
+
+    function verifyAccessKey() {
+      try {
+        const inputElem = document.getElementById('accessKeyInput');
+        if (!inputElem) return;
+
+        const rawVal = inputElem.value;
+        const matchedKey = normalizeKey(rawVal);
+
+        if (!rawVal || !rawVal.trim()) {
+          showAuthMsg("請輸入金鑰代碼", "error");
+          playAlarm();
+          return;
+        }
+
+        // 檢查是否在自訂的 VALID_KEYS 陣列中
+        if (!VALID_KEYS.includes(matchedKey)) {
+          showAuthMsg("【無效金鑰】無此金鑰權限，請重新確認。", "error");
+          playAlarm();
+          return;
+        }
+
+        // 檢查該金鑰是否被使用過
+        const usedKeys = getUsedKeys();
+        if (usedKeys[matchedKey]) {
+          showAuthMsg(`【ACCESS DENIED】金鑰 (${matchedKey}) 已被使用過！`, "error");
+          playAlarm();
+          return;
+        }
+
+        // 驗證成功 -> 解鎖表單
+        currentKey = matchedKey;
+        const activeKeyElem = document.getElementById('activeKeyDisplay');
+        if (activeKeyElem) activeKeyElem.innerText = currentKey;
+
+        const modalElem = document.getElementById('keyAuthModal');
+        if (modalElem) modalElem.classList.add('hidden');
+
+        const formViewElem = document.getElementById('stationFormView');
+        if (formViewElem) formViewElem.classList.remove('hidden');
+
+        playSuccess();
+      } catch (err) {
+        alert("金鑰驗證發生錯誤: " + err.message);
+      }
+    }
+
+    function showAuthMsg(msg, type) {
+      const msgBox = document.getElementById('authStatusMsg');
+      if (!msgBox) return;
+      msgBox.classList.remove('hidden', 'bg-red-950/80', 'text-red-300', 'border-red-600');
+      msgBox.classList.add('bg-red-950/80', 'text-red-300', 'border-red-600/50');
+      msgBox.innerText = msg;
+    }
+
+    // 表單提交處理
+    function submitForm(e) {
+      if (e) e.preventDefault();
+
+      try {
+        if (selectedSuspects.size === 0) {
+          alert("請至少選擇一位您推測的兇手！");
+          return;
+        }
+
+        const nowTime = new Date().toLocaleString();
+        const codeVal = document.getElementById('qRedemptionCodes').value.trim();
+
+        const responseData = {
+          station: currentStation,
+          key: currentKey,
+          suspects: Array.from(selectedSuspects),
+          motive: document.getElementById('qMotive').value,
+          anomaly: document.getElementById('qAnomaly').value,
+          codes: codeVal ? codeVal : "（未填寫）",
+          timestamp: nowTime
+        };
+
+        const usedKeys = getUsedKeys();
+        const responses = getResponses();
+
+        usedKeys[currentKey] = { usedAt: nowTime, station: currentStation };
+        responses.push(responseData);
+
+        safeStorage.setItem('sf_used_keys', JSON.stringify(usedKeys));
+        safeStorage.setItem('sf_responses', JSON.stringify(responses));
+
+        playSuccess();
+
+        // 顯示感謝作答畫面
+        document.getElementById('stationFormView').classList.add('hidden');
+        document.getElementById('thankYouView').classList.remove('hidden');
+        document.getElementById('thankKeyDisplay').innerText = currentKey;
+        document.getElementById('thankTimeDisplay').innerText = nowTime;
+      } catch(err) {
+        alert("提交表單發生錯誤: " + err.message);
+      }
+    }
+
+    // 站點 8 統整主控台渲染
+    function renderAdminDashboard() {
+      const usedKeys = getUsedKeys();
+      const responses = getResponses();
+
+      const countElem = document.getElementById('totalSubmissionsCount');
+      if (countElem) countElem.innerText = responses.length;
+
+      const keysGrid = document.getElementById('usedKeysGrid');
+      if (keysGrid) {
+        keysGrid.innerHTML = '';
+        VALID_KEYS.forEach(k => {
+          const isUsed = !!usedKeys[k];
+          const box = document.createElement('div');
+          box.className = `p-1.5 rounded border text-[10px] font-mono truncate ${isUsed ? 'bg-red-950/60 border-red-700 text-red-300' : 'bg-emerald-950/40 border-emerald-800 text-emerald-400'}`;
+          box.innerText = k;
+          box.title = isUsed ? `已使用 (站點 ${usedKeys[k].station})` : '尚未核銷';
+          keysGrid.appendChild(box);
+        });
+      }
+
+      const reportsList = document.getElementById('reportsList');
+      if (reportsList) {
+        reportsList.innerHTML = '';
+
+        if (responses.length === 0) {
+          reportsList.innerHTML = `<div class="col-span-full text-center text-slate-500 py-8">尚無任何隊員提交報告</div>`;
+        } else {
+          responses.slice().reverse().forEach((resp) => {
+            const card = document.createElement('div');
+            card.className = "cyber-card p-5 rounded-xl space-y-3 border-t-2 border-t-cyan-400";
+            
+            const suspectBadges = resp.suspects.map(id => {
+              const found = SUSPECTS.find(s => s.id === id);
+              const displayName = found ? `${id} ${found.name}` : id;
+              return `<span class="bg-cyan-950 text-cyan-300 border border-cyan-800 text-xs px-2 py-0.5 rounded font-mono">${displayName}</span>`;
+            }).join(' ');
+
+            card.innerHTML = `
+              <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                <span class="font-bold text-cyan-300 font-orbitron">金鑰: ${resp.key} (站點 ${resp.station})</span>
+                <span class="text-[10px] text-slate-500 font-mono">${resp.timestamp}</span>
+              </div>
+              <div><span class="text-xs text-slate-400">指控兇手：</span><div class="flex flex-wrap gap-1 mt-1">${suspectBadges}</div></div>
+              <div><span class="text-xs text-slate-400">作案動機：</span><p class="text-xs text-slate-200 mt-1 bg-slate-900/60 p-2 rounded border border-slate-800">${escapeHtml(resp.motive)}</p></div>
+              <div><span class="text-xs text-slate-400">系統異常原因：</span><p class="text-xs text-slate-200 mt-1 bg-slate-900/60 p-2 rounded border border-slate-800">${escapeHtml(resp.anomaly)}</p></div>
+              <div><span class="text-xs text-slate-400">核銷代碼：</span><div class="text-xs font-mono text-amber-300 mt-0.5">${escapeHtml(resp.codes)}</div></div>
+            `;
+            reportsList.appendChild(card);
+          });
+        }
+      }
+
+      renderChart(responses);
+    }
+
+    function renderChart(responses) {
+      if (typeof Chart === 'undefined') return;
+      const canvasElem = document.getElementById('suspectsChart');
+      if (!canvasElem) return;
+      const ctx = canvasElem.getContext('2d');
+      const tally = {};
+      SUSPECTS.forEach(s => tally[s.id] = 0);
+
+      responses.forEach(resp => {
+        if (resp.suspects) {
+          resp.suspects.forEach(id => { tally[id] = (tally[id] || 0) + 1; });
+        }
+      });
+
+      if (chartInstance) chartInstance.destroy();
+
+      chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: Object.keys(tally),
+          datasets: [{
+            label: '得票數',
+            data: Object.values(tally),
+            backgroundColor: 'rgba(0, 240, 255, 0.5)',
+            borderColor: '#00f0ff',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { beginAtZero: true, ticks: { color: '#94a3b8', stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            x: { ticks: { color: '#94a3b8', font: { size: 9 } }, grid: { display: false } }
+          },
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+
+    function resetAllGameData() {
+      if (confirm("確定要重置所有提交紀錄與回復所有金鑰嗎？")) {
+        safeStorage.removeItem('sf_used_keys');
+        safeStorage.removeItem('sf_responses');
+        renderAdminDashboard();
+        alert("資料庫已全數重置！");
+      }
+    }
+
+    function escapeHtml(str) {
+      return (str || '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    // 安全音效模組
+    let audioCtx = null;
+    function getAudioContext() {
+      if (!audioCtx) {
+        try {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (AudioContextClass) audioCtx = new AudioContextClass();
+        } catch(e) {}
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        try { audioCtx.resume(); } catch(e) {}
+      }
+      return audioCtx;
+    }
+
+    function toggleAudio() {
+      audioMuted = !audioMuted;
+      const icon = document.getElementById('audioIcon');
+      if (icon) icon.className = audioMuted ? "fa-solid fa-volume-xmark" : "fa-solid fa-volume-high";
+    }
+
+    function playBeep(freq, dur) {
+      if (audioMuted) return;
+      try {
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.frequency.value = freq;
+        g.gain.value = 0.05;
+        osc.connect(g);
+        g.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + dur);
+      } catch(e) {}
+    }
+
+    function playSuccess() {
+      playBeep(523, 0.08);
+      setTimeout(() => playBeep(783, 0.15), 80);
+    }
+
+    function playAlarm() {
+      playBeep(180, 0.2);
+    }
+  </script>
+</body>
+</html>
